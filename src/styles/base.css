@@ -100,6 +100,13 @@ a {
   border-radius: 6px;
 }
 
+/* Headings receive focus only to move screen-reader context, never as a control. */
+h1[tabindex='-1']:focus,
+h2[tabindex='-1']:focus,
+main[tabindex='-1']:focus {
+  outline: none;
+}
+
 .num,
 .tabular {
   font-variant-numeric: tabular-nums;

@@ -172,9 +172,19 @@ export function GuestRoom({ controller }: { controller: GuestRoomController }) {
               <dt>Sound</dt>
               <dd>{s.audio === 'on' ? 'On' : s.audio === 'enabling' ? 'Starting' : s.audio === 'blocked' ? 'Blocked' : 'Not enabled'}</dd>
               <dt>Timing</dt>
-              <dd>{s.local.timing?.timingValid ? 'In sync' : s.audio === 'on' ? 'Measuring' : '—'}</dd>
+              <dd>{!connected ? 'Waiting for the host' : s.local.timing?.timingValid ? 'In sync' : s.audio === 'on' ? 'Measuring' : '—'}</dd>
               <dt>Host music</dt>
-              <dd>{s.sharing === 'sharing' ? (s.sourceActive ? 'Playing' : 'Shared, quiet') : s.sharing === 'stopped' ? 'Stopped' : 'Not shared yet'}</dd>
+              <dd>
+                {!connected
+                  ? 'Unknown until reconnected'
+                  : s.sharing === 'sharing'
+                    ? s.sourceActive
+                      ? 'Playing'
+                      : 'Shared, quiet'
+                    : s.sharing === 'stopped'
+                      ? 'Stopped'
+                      : 'Not shared yet'}
+              </dd>
             </dl>
             {s.audio === 'on' && s.local.timing?.anchorSource === 'estimated' ? (
               <p className="guide-foot field-hint">This Mac doesn’t report exact output timing, so its sync is estimated. Use test clicks to check it.</p>

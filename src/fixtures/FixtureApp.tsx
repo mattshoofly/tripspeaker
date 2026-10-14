@@ -121,6 +121,7 @@ const ACTIVE_SPEAKERS: SpeakerView[] = [
 ];
 
 function guestSnapshot(over: Partial<GuestSnapshot> = {}): GuestSnapshot {
+  const selfPhase = over.phase ?? 'playing';
   return {
     kind: 'guest',
     stage: 'joined',
@@ -128,7 +129,7 @@ function guestSnapshot(over: Partial<GuestSnapshot> = {}): GuestSnapshot {
     code: '0047',
     hostName: 'Maya’s MacBook Pro',
     selfId: 'g1',
-    speakers: ACTIVE_SPEAKERS.map((s) => ({ ...s, isSelf: s.id === 'g1' })),
+    speakers: ACTIVE_SPEAKERS.map((s) => (s.id === 'g1' ? { ...s, isSelf: true, phase: selfPhase } : { ...s, isSelf: false })),
     audio: 'on',
     phase: 'playing',
     sharing: 'sharing',
@@ -150,16 +151,18 @@ const noop = () => undefined;
 
 function hostController(snapshot: HostSnapshot, level: number): HostRoomController {
   const a = fakeAnalyser(level);
+  const store = new Store(snapshot);
+  const patchLocal = (p: Partial<LocalAudioView>) => store.update((s) => ({ ...s, local: { ...s.local, ...p } }));
   return {
-    store: new Store(snapshot),
+    store,
     engine: { inputAnalyser: a, outputAnalyser: a },
     shareTab: noop,
     stopSharing: noop,
     dismissCaptureError: noop,
     playTestClicks: noop,
-    setVolume: noop,
-    setMuted: noop,
-    setTrim: noop,
+    setVolume: (volume) => patchLocal({ volume }),
+    setMuted: (muted) => patchLocal({ muted }),
+    setTrim: (trimMs) => patchLocal({ trimMs }),
     setCommonBuffer: noop,
     setHostName: noop,
     setLocked: noop,
@@ -175,14 +178,16 @@ function hostController(snapshot: HostSnapshot, level: number): HostRoomControll
 
 function guestController(snapshot: GuestSnapshot, level: number): GuestRoomController {
   const a = fakeAnalyser(level);
+  const store = new Store(snapshot);
+  const patchLocal = (p: Partial<LocalAudioView>) => store.update((s) => ({ ...s, local: { ...s.local, ...p } }));
   return {
-    store: new Store(snapshot),
+    store,
     leave: async () => undefined,
     enableAudio: noop,
     retry: noop,
-    setMuted: noop,
-    setVolume: noop,
-    setTrim: noop,
+    setMuted: (muted) => patchLocal({ muted }),
+    setVolume: (volume) => patchLocal({ volume }),
+    setTrim: (trimMs) => patchLocal({ trimMs }),
     resync: noop,
     requestTestClicks: noop,
     outputAnalyser: () => a,

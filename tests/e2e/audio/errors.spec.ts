@@ -8,10 +8,6 @@ async function attemptJoin(p: Participant, code: string) {
   await p.page.getByRole('button', { name: 'Join room' }).click();
 }
 
-function otherCode(code: string): string {
-  return String((Number(code) + 4321) % 10000).padStart(4, '0');
-}
-
 test.describe('joining errors', () => {
   test('wrong code shows "No room found" and keeps the code for correction', async ({ browser }) => {
     const ns = uniqueNamespace('wrong');
@@ -110,8 +106,8 @@ test.describe('joining errors', () => {
 
       await test.step('host removes a guest', async () => {
         const target = guests[guests.length - 1];
-        await host.page.getByRole('button', { name: `More for ${target.name}` }).click();
-        await host.page.getByRole('menuitem', { name: 'Remove from room' }).click();
+        await host.page.getByRole('button', { name: new RegExp(`^Volume for ${target.name}`) }).click();
+        await host.page.getByRole('dialog', { name: `Volume for ${target.name}` }).getByRole('button', { name: 'Remove from room' }).click();
         await expect(target.page.getByRole('heading', { name: 'You’re out of the room.' })).toBeVisible({ timeout: 15_000 });
         await expect(host.page.getByTestId('speaker-pill')).toHaveText('4 of 5 speakers');
       });

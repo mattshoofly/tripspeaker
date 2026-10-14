@@ -205,14 +205,16 @@ function fixtureCapture(kind: CaptureFixture): Promise<CaptureResult> {
   gain.gain.value = kind === 'silent' ? 0 : 0.25;
   const osc = ctx.createOscillator();
   osc.frequency.value = 440;
-  const lfo = ctx.createOscillator();
-  lfo.frequency.value = 0.5;
-  const lfoGain = ctx.createGain();
-  lfoGain.gain.value = 0.15;
-  lfo.connect(lfoGain).connect(gain.gain);
   osc.connect(gain).connect(dest);
   osc.start();
-  lfo.start();
+  if (kind !== 'silent') {
+    const lfo = ctx.createOscillator();
+    lfo.frequency.value = 0.5;
+    const lfoGain = ctx.createGain();
+    lfoGain.gain.value = 0.15;
+    lfo.connect(lfoGain).connect(gain.gain);
+    lfo.start();
+  }
   void ctx.resume();
   const stream = new MediaStream([...dest.stream.getAudioTracks(), video]);
   const audioTrack = stream.getAudioTracks()[0];

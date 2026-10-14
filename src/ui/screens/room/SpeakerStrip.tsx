@@ -1,8 +1,8 @@
 import {
   AlertTriangle,
+  ChevronDown,
   Laptop,
   LoaderCircle,
-  MoreHorizontal,
   RefreshCw,
   UserMinus,
   Volume1,
@@ -16,7 +16,6 @@ import { phaseLabel } from '../../../core/status';
 import type { SpeakerView } from '../../../session/types';
 import { Flip, gsap } from '../../motion/gsap';
 import { IconButton } from '../../primitives/Button';
-import { Menu } from '../../primitives/Menu';
 import { Popover } from '../../primitives/Popover';
 import { Slider } from '../../primitives/Slider';
 import { ActivityBars } from '../../visual/Waveform';
@@ -50,14 +49,14 @@ function StateLine({ s }: { s: SpeakerView }) {
 }
 
 function VolumeControl({ s, controls }: { s: SpeakerView; controls: SpeakerControls }) {
-  const VolIcon = s.muted || s.volume === 0 ? VolumeX : s.volume < 0.5 ? Volume1 : Volume2;
   return (
     <Popover
       label={`Volume for ${s.name}`}
       className="vol-pop"
       trigger={(p) => (
-        <button type="button" className="icon-btn" aria-label={`Volume for ${s.name}, ${formatPct(s.volume)}`} title="Volume" {...p}>
-          <VolIcon aria-hidden="true" />
+        <button type="button" className="vol-trigger num" data-muted={s.muted ? '' : undefined} aria-label={`Volume for ${s.name}, ${formatPct(s.volume)}`} {...p}>
+          {formatPct(s.volume)}
+          <ChevronDown aria-hidden="true" />
         </button>
       )}
     >
@@ -66,6 +65,14 @@ function VolumeControl({ s, controls }: { s: SpeakerView; controls: SpeakerContr
         <span className="num">{s.muted ? 'Muted' : formatPct(s.volume)}</span>
       </div>
       <Slider label={`Volume for ${s.name}`} value={Math.round(s.volume * 100)} min={0} max={100} onChange={(v) => controls.setVolume(s.id, v / 100)} valueText={(v) => `${v}%`} dim={s.muted} ring="#1f221b" />
+      {controls.remove && !s.isSelf ? (
+        <div className="vol-pop-foot">
+          <button type="button" className="btn btn--quiet btn--sm vol-remove" onClick={() => controls.remove?.(s.id)}>
+            <UserMinus aria-hidden="true" />
+            Remove from room
+          </button>
+        </div>
+      ) : null}
     </Popover>
   );
 }
@@ -85,7 +92,9 @@ function SpeakerCard({ s, controls, leaving }: { s: SpeakerView; controls?: Spea
     >
       <div className="speaker-top">
         <div style={{ minWidth: 0 }}>
-          <p className="speaker-name">{s.name}</p>
+          <p className="speaker-name" title={s.name}>
+            {s.name}
+          </p>
           <p className="speaker-sub">{s.isSelf ? 'This Mac' : s.role === 'host' ? 'Shares the music' : 'Guest speaker'}</p>
         </div>
         <span className="role-badge" data-role={s.role}>
@@ -96,28 +105,17 @@ function SpeakerCard({ s, controls, leaving }: { s: SpeakerView; controls?: Spea
       <div className="speaker-bottom">
         <span className="speaker-meta">
           <ActivityBars level={s.level} muted={s.muted} />
-          <span className="num">{s.muted ? 'Muted' : formatPct(s.volume)}</span>
+          {can ? null : <span className="num">{s.muted ? 'Muted' : formatPct(s.volume)}</span>}
         </span>
         {can && controls ? (
           <span className="speaker-tools">
             <VolumeControl s={s} controls={controls} />
             <IconButton
               label={s.muted ? `Unmute ${s.name}` : `Mute ${s.name}`}
-              icon={s.muted ? VolumeX : Volume2}
+              icon={s.muted ? VolumeX : s.volume < 0.5 ? Volume1 : Volume2}
               aria-pressed={s.muted}
               onClick={() => controls.setMuted(s.id, !s.muted)}
             />
-            {controls.remove && !s.isSelf ? (
-              <Menu
-                label={`Manage ${s.name}`}
-                items={[{ id: 'remove', label: 'Remove from room', icon: UserMinus, tone: 'alert', onSelect: () => controls.remove?.(s.id) }]}
-                trigger={(p) => (
-                  <button type="button" className="icon-btn" aria-label={`More for ${s.name}`} title="More" {...p}>
-                    <MoreHorizontal aria-hidden="true" />
-                  </button>
-                )}
-              />
-            ) : null}
           </span>
         ) : null}
       </div>

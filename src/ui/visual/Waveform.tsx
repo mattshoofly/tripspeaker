@@ -73,8 +73,8 @@ export function Waveform({ source, mode, label, className }: WaveformProps) {
     const draw = () => {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, width, height);
-      const mid = height / 2;
-      const amp = (height / 2 - 6) * (mode === 'calm' ? 0.6 : 1);
+      const mid = height / 2 + 6;
+      const amp = Math.max(4, height / 2 - 18) * (mode === 'calm' ? 0.6 : 1);
       ctx.lineWidth = 1;
       ctx.strokeStyle = 'rgba(243,243,233,0.14)';
       ctx.beginPath();

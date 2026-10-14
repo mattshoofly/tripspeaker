@@ -95,6 +95,23 @@ function DialogShell({ open, onClose, children, className, labelledBy, described
         e.preventDefault();
         onClose();
       }}
+      onKeyDown={(e) => {
+        // Keep Tab cycling inside the dialog instead of escaping to browser chrome.
+        if (e.key !== 'Tab' || !dialogRef.current) return;
+        const focusable = Array.from(
+          dialogRef.current.querySelectorAll<HTMLElement>('button, [href], input, textarea, select, summary, [tabindex]:not([tabindex="-1"])'),
+        ).filter((el) => !el.hasAttribute('disabled') && el.getClientRects().length > 0 && !el.closest('[popover]:not(:popover-open)'));
+        if (!focusable.length) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }}
       onClick={(e) => {
         if (e.target === dialogRef.current) onClose();
       }}

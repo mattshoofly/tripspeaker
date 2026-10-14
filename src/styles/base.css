@@ -140,15 +140,36 @@ a {
   flex-direction: column;
 }
 
+/* Reduced motion removes movement, not feedback: colour and opacity changes stay. */
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
   }
-  *,
-  *::before,
-  *::after {
-    transition-duration: 1ms !important;
-    animation-duration: 1ms !important;
-    animation-iteration-count: 1 !important;
+  .spin,
+  .code-caret {
+    animation: none;
+  }
+  .btn:hover:not(:disabled),
+  .btn:active:not(:disabled),
+  .icon-btn:active:not(:disabled) {
+    transform: none;
+  }
+  .btn-arrow,
+  .back-link svg,
+  .text-link svg,
+  .switch::after,
+  .slider::-webkit-slider-thumb {
+    transition: none;
+  }
+  .btn:hover .btn-arrow,
+  .back-link:hover svg,
+  .text-link:hover svg,
+  .slider:hover::-webkit-slider-thumb {
+    transform: none !important;
+  }
+  @starting-style {
+    .popover:popover-open {
+      transform: none;
+    }
   }
 }

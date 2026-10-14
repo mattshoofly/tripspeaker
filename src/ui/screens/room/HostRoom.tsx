@@ -141,10 +141,7 @@ export function HostRoom({ controller }: { controller: HostRoomController }) {
             </Pill>
           ) : null}
           <Pill testId="speaker-pill">
-            <span className="num">
-              {s.speakers.length} / {s.maxSpeakers}
-            </span>{' '}
-            speakers
+            <span className="num">{`${s.speakers.length} of ${s.maxSpeakers} speakers`}</span>
           </Pill>
           <Button
             size="sm"

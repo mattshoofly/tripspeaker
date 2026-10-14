@@ -114,7 +114,7 @@ export function EntryScreen({ inviteCode }: { inviteCode: string | null }) {
               A speaker you already packed.
             </p>
             <RevealHeadline className="display">
-              One track.
+              One track.{' '}
               <br />
               Every Mac.
             </RevealHeadline>

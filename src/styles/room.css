@@ -4,8 +4,8 @@
 
 .room-page {
   display: grid;
-  gap: var(--s-4);
-  padding-top: var(--s-3);
+  gap: var(--s-3);
+  padding-top: var(--s-2);
 }
 
 /* ------------------------------------------------------------ A · Room bar */
@@ -107,9 +107,9 @@
     'main side'
     'wave wave'
     'controls controls';
-  gap: var(--s-3) var(--s-5);
-  min-height: 440px;
-  padding: clamp(24px, 3vw, 40px);
+  gap: 20px var(--s-5);
+  min-height: 400px;
+  padding: clamp(24px, 2.6vw, 36px);
 }
 
 .listen-status {
@@ -156,7 +156,7 @@
 .listen-wave {
   grid-area: wave;
   position: relative;
-  height: clamp(88px, 13vh, 140px);
+  height: clamp(80px, 11vh, 124px);
   overflow: hidden;
   border: 1px solid var(--hairline);
   border-radius: var(--r-inner);
@@ -272,12 +272,12 @@
 
 .guide ol {
   display: grid;
-  gap: 14px;
+  gap: 12px;
   margin-top: 14px;
   counter-reset: guide;
 }
 
-.guide li {
+.guide ol > li {
   display: grid;
   grid-template-columns: 26px 1fr;
   align-items: start;
@@ -286,7 +286,7 @@
   font-size: var(--fs-small);
 }
 
-.guide li::before {
+.guide ol > li::before {
   counter-increment: guide;
   content: counter(guide);
   display: grid;
@@ -300,9 +300,14 @@
   font-variant-numeric: tabular-nums;
 }
 
-.guide li strong {
+.guide ol > li strong {
   color: var(--text);
   font-weight: var(--w-medium);
+}
+
+.guide .checklist {
+  display: grid;
+  gap: 10px;
 }
 
 .guide-foot {

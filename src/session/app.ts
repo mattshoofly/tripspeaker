@@ -2,6 +2,7 @@ import { parseInviteCode } from '../core/roomCode';
 import { GuestController, type JoinResult } from './guest';
 import { HostController } from './host';
 import { Store } from './store';
+import type { SyncProbe } from './types';
 
 export type AppView =
   | { screen: 'home'; inviteCode: string | null; visit: number }
@@ -67,21 +68,28 @@ export function goHome(): void {
 declare global {
   interface Window {
     __tripSpeaker?: {
-      view: () => AppView;
+      screen: () => AppView['screen'];
       snapshot: () => unknown;
+      probe: () => SyncProbe | null;
       simulateDrop: () => void;
     };
   }
 }
 
-/** Read-only diagnostics used by the browser tests; nothing here is privileged. */
+/** Diagnostics used by the browser tests; it exposes nothing beyond this tab. */
 export function installDiagnosticsHook(): void {
   window.__tripSpeaker = {
-    view: () => app.get(),
+    screen: () => app.get().screen,
     snapshot: () => {
       const v = app.get();
       if (v.screen === 'host') return v.host.store.get();
       if (v.screen === 'guest') return v.guest.store.get();
+      return null;
+    },
+    probe: () => {
+      const v = app.get();
+      if (v.screen === 'host') return v.host.probe();
+      if (v.screen === 'guest') return v.guest.probe();
       return null;
     },
     simulateDrop: () => {

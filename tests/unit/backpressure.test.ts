@@ -5,7 +5,10 @@ class FakeChannel implements FanoutTarget {
   readonly gate = new SendGate(64 * 1024, 24 * 1024);
   buffered = 0;
   received = 0;
-  constructor(private readonly drainPerTick: number) {}
+  private readonly drainPerTick: number;
+  constructor(drainPerTick: number) {
+    this.drainPerTick = drainPerTick;
+  }
   bufferedAmount() {
     return this.buffered;
   }

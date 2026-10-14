@@ -1,4 +1,4 @@
-import { CaptureError, requestTabCapture, type CaptureResult } from '../audio/capture';
+import { CaptureError, relaxProcessing, requestTabCapture, type CaptureResult } from '../audio/capture';
 import { AudioEngine } from '../audio/engine';
 import { TimingController } from '../audio/timing';
 import { SendGate } from '../core/backpressure';
@@ -27,7 +27,8 @@ import { resolveConnectionConfig, type ConnectionConfig } from '../config';
 import { bufferedAmount, createPeer, describeChannel, waitForOpen, type DataConnection, type Peer } from '../net/peer';
 import { loadPrefs, savePrefs } from './prefs';
 import { Store } from './store';
-import type { CaptureView, HostSnapshot, LinkDiagnostics, SpeakerView } from './types';
+import { perfAt } from '../core/anchor';
+import type { CaptureView, HostSnapshot, LinkDiagnostics, SpeakerView, SyncProbe } from './types';
 import { WakeLock } from './wakeLock';
 
 const GRACE_MS = 25_000;
@@ -641,8 +642,14 @@ export class HostController {
       inputActive: false,
       trackMuted: track.muted,
       sharingSince: performance.now(),
+      processing: result.processing,
     };
     this.broadcastRoom();
+    void relaxProcessing(result).then((processing) => {
+      if (this.capture !== result) return;
+      this.captureView = { ...this.captureView, processing };
+      this.queueEmit();
+    });
   }
 
   stopSharing(status: 'stopped' | 'idle' = 'stopped'): void {
@@ -798,6 +805,25 @@ export class HostController {
 
   get isDisposed(): boolean {
     return this.disposed;
+  }
+
+  probe(): SyncProbe | null {
+    const stats = this.localStats;
+    const map = this.timing.localMap();
+    if (!stats || !map || stats.sourcePosition === null || this.disposed) return null;
+    return {
+      role: 'host',
+      timeOrigin: performance.timeOrigin,
+      sourceRate: stats.sourceRate,
+      outputRate: stats.outputRate,
+      sourcePosition: stats.sourcePosition,
+      heardAtPerf: perfAt(map, stats.outputFrame / stats.outputRate),
+      anchorSource: this.timing.diagnostics().anchorSource,
+      thetaMs: 0,
+      framesPlayed: stats.framesPlayed,
+      level: stats.level,
+      epoch: stats.epoch,
+    };
   }
 
   // ----------------------------------------------------------------- snapshot

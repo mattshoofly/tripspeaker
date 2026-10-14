@@ -1,4 +1,4 @@
-import type { CaptureErrorKind, SuppressionState } from '../audio/capture';
+import type { AudioProcessing, CaptureErrorKind, SuppressionState } from '../audio/capture';
 import type { TimingDiagnostics } from '../audio/timing';
 import type { SharingState, SpeakerPhase, SpeakerRole } from '../core/protocol';
 import type { RendererStats } from '../core/renderer';
@@ -26,6 +26,8 @@ export interface CaptureView {
   /** The browser reports the captured track as muted (no frames from the source). */
   trackMuted: boolean;
   sharingSince: number | null;
+  /** Voice-processing flags Chrome applied to the captured tab, when reported. */
+  processing?: AudioProcessing | null;
 }
 
 export interface LocalAudioView {
@@ -53,6 +55,22 @@ export interface ClockView {
   rttMs: number | null;
   uncertaintyMs: number | null;
   samples: number;
+}
+
+/** Instrumentation: which source frame this device is heard playing, and when. */
+export interface SyncProbe {
+  role: 'host' | 'guest';
+  timeOrigin: number;
+  sourceRate: number;
+  outputRate: number;
+  sourcePosition: number;
+  /** performance.now() domain time at which `sourcePosition` is heard. */
+  heardAtPerf: number;
+  anchorSource: string | null;
+  thetaMs: number | null;
+  framesPlayed: number;
+  level: number;
+  epoch: number;
 }
 
 export interface HostSnapshot {

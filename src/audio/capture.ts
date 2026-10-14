@@ -18,6 +18,13 @@ export class CaptureError extends Error {
 
 export type SuppressionState = 'on' | 'off' | 'unknown';
 
+export interface AudioProcessing {
+  echoCancellation: boolean | null;
+  noiseSuppression: boolean | null;
+  autoGainControl: boolean | null;
+  channelCount: number | null;
+}
+
 export interface CaptureResult {
   stream: MediaStream;
   audioTrack: MediaStreamTrack;
@@ -25,6 +32,7 @@ export interface CaptureResult {
   suppression: SuppressionState;
   surface: string | null;
   sampleRate: number | null;
+  processing: AudioProcessing;
   /** Stops tracks and frees anything the capture created. */
   release: () => void;
 }
@@ -37,7 +45,15 @@ interface TestGlobals {
   __TRIP_SPEAKER_TEST__?: { capture?: CaptureFixture };
 }
 
-export function displayMediaOptions(controller?: unknown): DisplayMediaOptions {
+/**
+ * Chrome 154 refuses to start tab audio when echoCancellation:false is
+ * requested up front ("Could not start audio source"), so it is only
+ * attempted afterwards via applyConstraints. Noise suppression and auto-gain
+ * would damage music and are turned off where the browser allows it.
+ */
+let minimalAudioConstraints = false;
+
+export function displayMediaOptions(controller?: unknown, minimal = minimalAudioConstraints): DisplayMediaOptions {
   return {
     video: {
       displaySurface: 'browser',
@@ -45,12 +61,9 @@ export function displayMediaOptions(controller?: unknown): DisplayMediaOptions {
       width: { max: 320 },
       height: { max: 240 },
     } as MediaTrackConstraints,
-    audio: {
-      suppressLocalAudioPlayback: true,
-      echoCancellation: false,
-      noiseSuppression: false,
-      autoGainControl: false,
-    } as MediaTrackConstraints,
+    audio: (minimal
+      ? { suppressLocalAudioPlayback: true }
+      : { suppressLocalAudioPlayback: true, noiseSuppression: false, autoGainControl: false }) as unknown as MediaTrackConstraints,
     preferCurrentTab: false,
     selfBrowserSurface: 'exclude',
     systemAudio: 'exclude',
@@ -82,6 +95,8 @@ export function mapCaptureError(err: unknown): CaptureError {
     case 'NotAllowedError':
       return /system/i.test(message) ? new CaptureError('denied', message) : new CaptureError('cancelled', message);
     case 'NotReadableError':
+      // Next attempt asks for nothing but tab audio.
+      if (/audio/i.test(message)) minimalAudioConstraints = true;
       return new CaptureError('not-readable', message);
     case 'TypeError':
     case 'NotSupportedError':
@@ -109,8 +124,34 @@ export function inspectCapture(stream: MediaStream): CaptureResult {
     suppression,
     surface,
     sampleRate: typeof settings.sampleRate === 'number' ? settings.sampleRate : null,
+    processing: readProcessing(audioTrack),
     release: () => stream.getTracks().forEach((t) => t.stop()),
   };
+}
+
+export function readProcessing(track: MediaStreamTrack): AudioProcessing {
+  const s = track.getSettings();
+  return {
+    echoCancellation: typeof s.echoCancellation === 'boolean' ? s.echoCancellation : null,
+    noiseSuppression: typeof s.noiseSuppression === 'boolean' ? s.noiseSuppression : null,
+    autoGainControl: typeof s.autoGainControl === 'boolean' ? s.autoGainControl : null,
+    channelCount: typeof s.channelCount === 'number' ? s.channelCount : null,
+  };
+}
+
+/** Best effort: voice processing is wrong for music, but some builds refuse to turn it off. */
+export async function relaxProcessing(result: CaptureResult): Promise<AudioProcessing> {
+  try {
+    await result.audioTrack.applyConstraints({ echoCancellation: false, noiseSuppression: false, autoGainControl: false });
+  } catch {
+    try {
+      await result.audioTrack.applyConstraints({ noiseSuppression: false, autoGainControl: false });
+    } catch {
+      /* keep the browser defaults */
+    }
+  }
+  result.processing = readProcessing(result.audioTrack);
+  return result.processing;
 }
 
 export function requestTabCapture(): Promise<CaptureResult> {
@@ -182,6 +223,7 @@ function fixtureCapture(kind: CaptureFixture): Promise<CaptureResult> {
     suppression: 'on',
     surface: 'browser',
     sampleRate: ctx.sampleRate,
+    processing: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 2 },
     release: () => {
       stream.getTracks().forEach((t) => t.stop());
       void ctx.close();

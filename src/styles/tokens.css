@@ -1,0 +1,70 @@
+:root {
+  color-scheme: dark;
+
+  /* Colour — mirrored in src/design/tokens.ts and checked for contrast */
+  --bg: #11130F;
+  --surface: #1A1D17;
+  --surface-hover: #24281F;
+  --inset: #0D0F0B;
+  --text: #F3F3E9;
+  --text-2: #B4B9AB;
+  --text-3: #8E9486;
+  --accent: #D5F86F;
+  --accent-hover: #E0FB8C;
+  --accent-pressed: #C4E85A;
+  --on-accent: #11130F;
+  --alert: #F2A68E;
+  --hairline: rgba(243, 243, 233, 0.1);
+  --line: rgba(243, 243, 233, 0.18);
+  --line-control: rgba(243, 243, 233, 0.4);
+  --accent-wash: rgba(213, 248, 111, 0.09);
+  --alert-wash: rgba(242, 166, 142, 0.1);
+  --white-wash: rgba(243, 243, 233, 0.05);
+
+  /* Type */
+  --font: 'Geist Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --w-regular: 400;
+  --w-medium: 500;
+  --w-semibold: 600;
+  --w-bold: 680;
+  --fs-display: clamp(3.25rem, 1.4rem + 5.6vw, 6.75rem);
+  --fs-h1: clamp(2.25rem, 1.45rem + 2.6vw, 3.5rem);
+  --fs-h2: clamp(1.75rem, 1.3rem + 1.5vw, 2.5rem);
+  --fs-h3: 1.1875rem;
+  --fs-lead: clamp(1.0625rem, 0.98rem + 0.4vw, 1.25rem);
+  --fs-body: 1rem;
+  --fs-small: 0.875rem;
+  --fs-label: 0.75rem;
+
+  /* Space — 8px rhythm */
+  --s-0: 4px;
+  --s-1: 8px;
+  --s-2: 16px;
+  --s-3: 24px;
+  --s-4: 32px;
+  --s-5: 40px;
+  --s-6: 48px;
+  --s-8: 64px;
+  --s-10: 80px;
+  --s-12: 96px;
+  --s-16: 128px;
+
+  /* Shape */
+  --r-surface: 24px;
+  --r-inner: 16px;
+  --r-control: 12px;
+  --r-control-lg: 14px;
+  --r-pill: 999px;
+
+  --shadow-surface: inset 0 1px 0 rgba(243, 243, 233, 0.045), 0 32px 64px -36px rgba(0, 0, 0, 0.75);
+  --shadow-pop: 0 28px 72px -20px rgba(0, 0, 0, 0.78), 0 0 0 1px var(--hairline);
+
+  /* Motion: CSS handles hover/press; GSAP handles choreography (power2/3.out) */
+  --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --t-fast: 140ms;
+  --t-med: 180ms;
+
+  --content-max: 1200px;
+  --gutter: clamp(20px, 4vw, 48px);
+  --topbar-h: 64px;
+}

@@ -21,7 +21,8 @@ import { rejectToJoinError, signalingErrorToJoinError, type JoinErrorKind } from
 import { createPeer, describeChannel, peerErrorType, waitForOpen, type DataConnection, type Peer } from '../net/peer';
 import { loadPrefs, savePrefs } from './prefs';
 import { Store } from './store';
-import type { GuestSnapshot, GuestStage, SpeakerView } from './types';
+import { perfAt } from '../core/anchor';
+import type { GuestSnapshot, GuestStage, SpeakerView, SyncProbe } from './types';
 import { WakeLock } from './wakeLock';
 
 export type JoinResult = { ok: true } | { ok: false; error: JoinErrorKind };
@@ -653,6 +654,29 @@ export class GuestController {
 
   get isDisposed(): boolean {
     return this.disposed;
+  }
+
+  outputAnalyser(): AnalyserNode | null {
+    return this.engine?.outputAnalyser ?? null;
+  }
+
+  probe(): SyncProbe | null {
+    const stats = this.stats;
+    const map = this.timing?.localMap();
+    if (!stats || !map || stats.sourcePosition === null || !this.engine) return null;
+    return {
+      role: 'guest',
+      timeOrigin: performance.timeOrigin,
+      sourceRate: stats.sourceRate,
+      outputRate: stats.outputRate,
+      sourcePosition: stats.sourcePosition,
+      heardAtPerf: perfAt(map, stats.outputFrame / stats.outputRate),
+      anchorSource: this.timing?.diagnostics().anchorSource ?? null,
+      thetaMs: this.offset.value,
+      framesPlayed: stats.framesPlayed,
+      level: stats.level,
+      epoch: stats.epoch,
+    };
   }
 
   /** Test hook: simulate a dropped network link without leaving the room. */

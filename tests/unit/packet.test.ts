@@ -72,13 +72,26 @@ describe('Packetizer', () => {
     expect(got.map((g) => g.seq)).toEqual([0, 1, 2, 3]);
   });
 
-  it('drops a partial packet on a timeline discontinuity', () => {
-    const got: number[] = [];
-    const p = new Packetizer({ packetFrames: 256, sampleRate: 48000, sessionId: 1, epoch: 1, emit: (_b, first) => got.push(first) });
+  it('ships a short packet when the capture clock skips, so only skipped frames are lost', () => {
+    const got: { first: number; frames: number }[] = [];
+    const p = new Packetizer({
+      packetFrames: 256,
+      sampleRate: 48000,
+      sessionId: 1,
+      epoch: 1,
+      emit: (b, first) => {
+        const d = decodePacket(b);
+        if (d.ok) got.push({ first, frames: d.header.frames });
+      },
+    });
     const block = new Float32Array(128);
     p.push(block, 0);
     p.push(block, 5000);
     p.push(block, 5128);
-    expect(got).toEqual([5000]);
+    expect(got).toEqual([
+      { first: 0, frames: 128 },
+      { first: 5000, frames: 256 },
+    ]);
+    expect(p.discontinuities).toBe(1);
   });
 });

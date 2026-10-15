@@ -109,6 +109,7 @@ function hostSnapshot(over: Partial<HostSnapshot> = {}): HostSnapshot {
     links: [],
     maxSpeakers: 5,
     outputChanged: false,
+    captureCounters: { packets: 18234, discontinuities: 0, frameGaps: 0 },
     ...over,
   };
 }

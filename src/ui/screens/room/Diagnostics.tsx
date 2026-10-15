@@ -24,6 +24,7 @@ export function Diagnostics({
   links,
   packetsReceived,
   audioChannel,
+  capture,
   role,
 }: {
   local: LocalAudioView;
@@ -31,6 +32,7 @@ export function Diagnostics({
   links?: LinkDiagnostics[];
   packetsReceived?: number;
   audioChannel?: ChannelInfo | null;
+  capture?: { packets: number; discontinuities: number; frameGaps: number };
   role: 'host' | 'guest';
 }) {
   const r = local.renderer;
@@ -67,6 +69,9 @@ export function Diagnostics({
           <Row k="Audio packets received" v={String(packetsReceived ?? 0)} />
           <Row k="Audio channel" v={channelText(audioChannel ?? null)} />
         </>
+      ) : null}
+      {role === 'host' && capture ? (
+        <Row k="Packets captured / audio clock skips" v={`${capture.packets} / ${capture.frameGaps}`} alert={capture.frameGaps > 0} />
       ) : null}
       {role === 'host'
         ? (links ?? []).map((l) => (

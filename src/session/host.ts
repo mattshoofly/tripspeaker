@@ -880,6 +880,7 @@ export class HostController {
       links,
       maxSpeakers: MAX_SPEAKERS,
       outputChanged: this.outputChanged,
+      captureCounters: this.engine?.captureCounters ?? { packets: 0, discontinuities: 0, frameGaps: 0 },
     };
   }
 }

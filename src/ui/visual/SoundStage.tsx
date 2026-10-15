@@ -77,7 +77,7 @@ function Laptop({ l, clipId }: { l: LaptopSpec; clipId: string }) {
 
 export const SoundStage = forwardRef<HTMLElement, { compact?: boolean }>(function SoundStage({ compact }, ref) {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, '');
-  const d = useMemo(wavePath, []);
+  const d = useMemo(() => wavePath(), []);
   const host = LAPTOPS.find((l) => l.host)!;
   const hostScreen = screenRect(host);
   return (

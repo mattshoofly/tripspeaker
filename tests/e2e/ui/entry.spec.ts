@@ -172,6 +172,18 @@ test.describe('entry screen', () => {
     await expect(page.getByRole('region', { name: 'What if I hear an echo?' })).toBeHidden();
   });
 
+  test('clicks during the entrance animation are not lost', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'commit' });
+    const join = page.getByRole('button', { name: 'Join a room' });
+    await join.waitFor({ state: 'attached' });
+    // Dispatch immediately (no actionability wait) while the entrance is still running.
+    await join.dispatchEvent('click');
+    await expect(page.getByLabel('Room code, four digits')).toBeFocused();
+    await page.getByRole('button', { name: 'Back' }).dispatchEvent('click');
+    await page.getByRole('button', { name: 'Join a room' }).dispatchEvent('click');
+    await expect(page.getByRole('heading', { name: 'Join your friends.' })).toBeVisible();
+  });
+
   test('every control has an accessible name and a 44px target', async ({ page }) => {
     await page.goto('/');
     await page.waitForTimeout(900);

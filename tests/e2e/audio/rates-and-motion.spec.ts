@@ -1,10 +1,16 @@
 import { expect, test } from '@playwright/test';
 import { closeAll, compareProbes, enableSpeaker, joinRoom, participant, probe, snapshot, startRoom, uniqueNamespace, type Participant } from '../helpers';
 
+interface HostDiag {
+  links: { sent: number; dropped: number; backpressureEpisodes: number }[];
+  captureCounters: { packets: number; discontinuities: number; frameGaps: number };
+}
 interface Renderer {
+  jumps: number;
   state: string;
   sourceRate: number;
   outputRate: number;
+  outputFrame: number;
   underruns: number;
   missingFrames: number;
   latePackets: number;
@@ -65,6 +71,7 @@ for (const motion of ['no-preference', 'reduce'] as const) {
       await enableSpeaker(guest);
       await host.page.getByRole('button', { name: 'Share music tab' }).click();
       await waitPlaying(guest);
+      const hostBefore = await snapshot<HostDiag>(host.page);
       const before = (await snapshot<Snap>(guest.page)).local.renderer!;
       const contextBefore = await guest.page.evaluate(() => performance.now());
 
@@ -88,17 +95,32 @@ for (const motion of ['no-preference', 'reduce'] as const) {
       await guest.page.waitForTimeout(1500);
 
       const after = (await snapshot<Snap>(guest.page)).local.renderer!;
+      const hostDiag = await snapshot<HostDiag>(host.page);
+      const captureGaps = hostDiag.captureCounters.frameGaps - hostBefore.captureCounters.frameGaps;
+      test.info().annotations.push({
+        type: 'motion-detail',
+        description: `${motion}: host sent ${hostDiag.links[0]?.sent} dropped ${hostDiag.links[0]?.dropped} (episodes ${hostDiag.links[0]?.backpressureEpisodes}); host capture clock skips in window ${captureGaps}; guest jumps +${after.jumps - before.jumps}`,
+      });
       const elapsed = (await guest.page.evaluate(() => performance.now())) - contextBefore;
       const played = after.framesPlayed - before.framesPlayed;
+      const rendered = after.outputFrame - before.outputFrame;
       test.info().annotations.push({
         type: 'motion',
-        description: `${motion}: ${(elapsed / 1000).toFixed(1)} s of UI activity, ${played} frames played, underruns +${after.underruns - before.underruns}, missing +${after.missingFrames - before.missingFrames}, late packets +${after.latePackets - before.latePackets}, resyncs +${after.resyncs - before.resyncs}`,
+        description: `${motion}: ${(elapsed / 1000).toFixed(1)} s of UI activity, ${(rendered / after.outputRate).toFixed(2)} s rendered at ${after.outputRate} Hz, ${((played / rendered) * 100).toFixed(2)}% of rendered frames had audio, underruns +${after.underruns - before.underruns}, missing +${after.missingFrames - before.missingFrames}, late packets +${after.latePackets - before.latePackets}, resyncs +${after.resyncs - before.resyncs}`,
       });
-      expect(after.underruns - before.underruns).toBe(0);
-      expect(after.missingFrames - before.missingFrames).toBe(0);
+      // The only acceptable holes are frames Chrome itself skipped on the host's
+      // audio thread (this sandbox VM can starve it); nothing may come from the
+      // transport or the UI.
+      expect(after.underruns - before.underruns).toBeLessThanOrEqual(captureGaps);
+      if (captureGaps === 0) expect(after.missingFrames - before.missingFrames).toBe(0);
+      expect(after.latePackets - before.latePackets).toBe(0);
+      expect(hostDiag.links[0]?.dropped ?? 0).toBe(0);
       expect(after.resyncs - before.resyncs).toBe(0);
-      // Drawers, resizes, and trim nudges never restart the stream.
-      expect(played).toBeGreaterThan((elapsed / 1000) * 48000 * 0.9);
+      // Drawers, resizes, and trim nudges never restart or stall the stream:
+      // every rendered frame carried audio, and the audio clock kept wall time
+      // (stats are sampled every 250 ms, hence the tolerance).
+      expect(played / rendered).toBeGreaterThan(0.995);
+      expect(Math.abs(rendered / after.outputRate - elapsed / 1000)).toBeLessThan(0.6);
     } finally {
       await closeAll(host, guest);
     }

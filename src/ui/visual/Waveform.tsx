@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import type { VisualizerMode } from '../../session/prefs';
 
 export interface WaveformProps {
@@ -26,7 +26,9 @@ export function levelToHeight(rms: number): number {
 export function Waveform({ source, mode, label, className }: WaveformProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sourceRef = useRef(source);
-  sourceRef.current = source;
+  useLayoutEffect(() => {
+    sourceRef.current = source;
+  });
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -169,7 +171,9 @@ export function Waveform({ source, mode, label, className }: WaveformProps) {
 export function InputMeter({ source, label }: { source: () => AnalyserNode | null; label: string }) {
   const ref = useRef<HTMLSpanElement>(null);
   const sourceRef = useRef(source);
-  sourceRef.current = source;
+  useLayoutEffect(() => {
+    sourceRef.current = source;
+  });
   useEffect(() => {
     const el = ref.current;
     if (!el) return;

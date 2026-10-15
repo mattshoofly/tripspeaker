@@ -41,9 +41,9 @@ export const RevealHeadline = forwardRef<HTMLHeadingElement, RevealHeadlineProps
               // Re-splits after font load or resize keep their progress instead of replaying.
               const tween = gsap.from(self.words, {
                 yPercent: 108,
-                duration: 0.62,
+                duration: 0.52,
                 ease: 'power3.out',
-                stagger: 0.07,
+                stagger: 0.05,
                 delay: played.current ? 0 : delay,
                 onStart: () => {
                   if (!played.current) onPlay?.();

@@ -189,6 +189,7 @@ function oneOf<T extends string>(v: unknown, list: readonly T[]): v is T {
 export function sanitizeName(raw: unknown, fallback: string): string {
   if (typeof raw !== 'string') return fallback;
   // Strip control characters; keep the rest of Unicode (names are display-only text).
+  // oxlint-disable-next-line no-control-regex
   const cleaned = raw.replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/\s+/g, ' ').trim();
   if (!cleaned) return fallback;
   return Array.from(cleaned).slice(0, MAX_NAME_LENGTH).join('');

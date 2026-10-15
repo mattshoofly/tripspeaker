@@ -19,6 +19,9 @@ class CaptureProcessor extends AudioWorkletProcessor {
   private levelCount = 0;
   private levelPeak = 0;
   private readonly levelInterval = Math.round(sampleRate / 10);
+  private lastFrameEnd = -1;
+  private frameGaps = 0;
+  private emitting = false;
 
   constructor(options?: { processorOptions?: Partial<CaptureProcessorOptions> }) {
     super();
@@ -74,6 +77,8 @@ class CaptureProcessor extends AudioWorkletProcessor {
     const frames = outputs[0]?.[0]?.length ?? inputs[0]?.[0]?.length ?? 128;
     if (this.mono.length !== frames) this.mono = new Float32Array(frames);
     const mono = this.mono;
+    if (this.lastFrameEnd >= 0 && currentFrame !== this.lastFrameEnd) this.frameGaps++;
+    this.lastFrameEnd = currentFrame + frames;
     const input = inputs[0];
     const channels = input ? input.length : 0;
     if (channels === 0) {
@@ -101,7 +106,15 @@ class CaptureProcessor extends AudioWorkletProcessor {
     this.levelCount += frames;
     this.levelPeak = peak;
     if (this.levelCount >= this.levelInterval) {
-      const msg: CaptureOutbound = { type: 'level', rms: Math.sqrt(this.levelSumSq / this.levelCount), peak: this.levelPeak, frame: currentFrame };
+      const msg: CaptureOutbound = {
+        type: 'level',
+        rms: Math.sqrt(this.levelSumSq / this.levelCount),
+        peak: this.levelPeak,
+        frame: currentFrame,
+        packets: this.packetizer.nextSequence,
+        discontinuities: this.packetizer.discontinuities,
+        frameGaps: this.frameGaps,
+      };
       this.port.postMessage(msg);
       this.levelSumSq = 0;
       this.levelCount = 0;
@@ -122,7 +135,14 @@ class CaptureProcessor extends AudioWorkletProcessor {
       }
     }
 
-    if (this.active || clicksLive) this.packetizer.push(mono, currentFrame);
+    if (this.active || clicksLive) {
+      this.packetizer.push(mono, currentFrame);
+      this.emitting = true;
+    } else if (this.emitting) {
+      // Pausing emission is intentional, not a clock skip.
+      this.packetizer.reset();
+      this.emitting = false;
+    }
     return true;
   }
 }

@@ -67,8 +67,15 @@ function useGuestAnnouncements(s: GuestSnapshot) {
 export function GuestRoom({ controller }: { controller: GuestRoomController }) {
   const s = useSnapshot(controller.store);
   const [drawer, setDrawer] = useState<null | 'calibration' | 'settings'>(null);
+  const [clicksRequested, setClicksRequested] = useState(false);
   const [vis, setVis] = useVisualizer();
   useGuestAnnouncements(s);
+  useEffect(() => {
+    if (!clicksRequested) return;
+    // A click train lasts ~6 s and is heard ~1.2 s after the host plays it.
+    const t = setTimeout(() => setClicksRequested(false), 8000);
+    return () => clearTimeout(t);
+  }, [clicksRequested]);
 
   if (s.stage === 'ended') {
     return <RoomEnded title="The room has ended." body="Your host ended the session. Thanks for listening." onAction={goHome} />;
@@ -253,8 +260,11 @@ export function GuestRoom({ controller }: { controller: GuestRoomController }) {
         role="guest"
         trimMs={s.local.trimMs}
         setTrim={(ms) => controller.setTrim(ms)}
-        onPlayClicks={() => controller.requestTestClicks()}
-        clicksActive={false}
+        onPlayClicks={() => {
+          controller.requestTestClicks();
+          setClicksRequested(true);
+        }}
+        clicksActive={clicksRequested}
         clicksDisabled={!connected}
         onResync={() => controller.resync()}
         speakers={s.speakers}

@@ -24,6 +24,8 @@ export class Packetizer {
   private firstFrame = 0;
   private expectedNext = -1;
   private sequence = 0;
+  /** Times the capture timeline jumped mid-packet (partial packet dropped). */
+  discontinuities = 0;
 
   constructor(opts: PacketizerOptions) {
     this.packetFrames = Math.max(32, Math.min(4096, Math.round(opts.packetFrames)));
@@ -51,7 +53,12 @@ export class Packetizer {
   }
 
   push(samples: Float32Array, startFrame: number): void {
-    if (this.expectedNext >= 0 && startFrame !== this.expectedNext) this.fill = 0;
+    if (this.expectedNext >= 0 && startFrame !== this.expectedNext) {
+      // The audio clock skipped (e.g. an overloaded render thread). Ship what
+      // we have as a short packet so only the skipped frames are lost.
+      this.discontinuities++;
+      if (this.fill > 0) this.flush();
+    }
     for (let i = 0; i < samples.length; i++) {
       if (this.fill === 0) this.firstFrame = startFrame + i;
       this.pcm[this.fill++] = floatToPcm16(samples[i]);
@@ -63,9 +70,10 @@ export class Packetizer {
   private flush(): void {
     const seq = this.sequence;
     this.sequence = (this.sequence + 1) >>> 0;
+    const pcm = this.fill === this.packetFrames ? this.pcm : this.pcm.subarray(0, this.fill);
     const packet = encodePacket(
       { sessionId: this.sessionId, epoch: this.epoch, sequence: seq, sampleRate: this.sampleRate, firstFrame: this.firstFrame },
-      this.pcm,
+      pcm,
     );
     this.fill = 0;
     this.emit(packet, this.firstFrame, seq);

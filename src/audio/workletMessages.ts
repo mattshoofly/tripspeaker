@@ -19,7 +19,7 @@ export type CaptureInbound =
 
 export type CaptureOutbound =
   | { type: 'packet'; packet: ArrayBuffer; firstFrame: number; sequence: number }
-  | { type: 'level'; rms: number; peak: number; frame: number }
+  | { type: 'level'; rms: number; peak: number; frame: number; packets: number; discontinuities: number; frameGaps: number }
   | { type: 'clicks-scheduled'; schedule: ClickSchedule };
 
 export type RendererInbound =

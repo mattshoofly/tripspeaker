@@ -143,7 +143,9 @@ export function SpeakerStrip({
   const prevSpeakers = useRef(speakers);
   const [leaving, setLeaving] = useState<SpeakerView[]>([]);
 
-  // Capture layout before React commits the new list (the DOM still shows the old one).
+  // Flip needs the layout from before React commits the new list, and the DOM
+  // still shows the old list only during this render.
+  /* oxlint-disable react/refs */
   if (key !== prevKey.current) {
     const reduce = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (listRef.current && !reduce) flipState.current = Flip.getState(listRef.current.querySelectorAll('[data-flip]'));
@@ -153,6 +155,7 @@ export function SpeakerStrip({
     if (gone.length && !reduce) setLeaving((l) => [...l.filter((x) => !ids.has(x.id)), ...gone]);
   }
   prevSpeakers.current = speakers;
+  /* oxlint-enable react/refs */
 
   useLayoutEffect(() => {
     const state = flipState.current;

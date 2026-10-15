@@ -42,29 +42,42 @@ export interface InputLevel {
   peak: number;
 }
 
+export interface CaptureCounters {
+  packets: number;
+  discontinuities: number;
+  frameGaps: number;
+}
+
 /** Perceptual volume curve; 0.0–1.0 slider to linear gain. */
 export function volumeToGain(volume: number): number {
   const v = Math.max(0, Math.min(1, volume));
   return v * v;
 }
 
+/**
+ * Everything plays ~1.2 s late by design, so low output latency buys nothing;
+ * a larger device buffer gives the audio thread slack when the Mac is busy.
+ * getOutputTimestamp() still reports when samples are actually heard.
+ */
+const LATENCY_HINT: AudioContextLatencyCategory = 'playback';
+
 function createContext(role: EngineRole): AudioContext {
   const preferred = (globalThis as { __TRIP_SPEAKER_TEST__?: { sampleRate?: number } }).__TRIP_SPEAKER_TEST__?.sampleRate;
   if (role === 'host') {
     try {
-      return new AudioContext({ latencyHint: 'interactive', sampleRate: preferred ?? 48000 });
+      return new AudioContext({ latencyHint: LATENCY_HINT, sampleRate: preferred ?? 48000 });
     } catch {
-      return new AudioContext({ latencyHint: 'interactive' });
+      return new AudioContext({ latencyHint: LATENCY_HINT });
     }
   }
   if (preferred) {
     try {
-      return new AudioContext({ latencyHint: 'interactive', sampleRate: preferred });
+      return new AudioContext({ latencyHint: LATENCY_HINT, sampleRate: preferred });
     } catch {
       /* fall through to the device rate */
     }
   }
-  return new AudioContext({ latencyHint: 'interactive' });
+  return new AudioContext({ latencyHint: LATENCY_HINT });
 }
 
 /**
@@ -87,6 +100,7 @@ export class AudioEngine {
   private muted = false;
   private disposed = false;
   latestStats: RendererStats | null = null;
+  captureCounters: CaptureCounters = { packets: 0, discontinuities: 0, frameGaps: 0 };
 
   readonly stats = new Emitter<RendererStats>();
   readonly packets = new Emitter<ArrayBuffer>();
@@ -188,7 +202,10 @@ export class AudioEngine {
       capture.port.onmessage = (e: MessageEvent<CaptureOutbound>) => {
         const msg = e.data;
         if (msg.type === 'packet') this.packets.emit(msg.packet);
-        else if (msg.type === 'level') this.inputLevel.emit({ rms: msg.rms, peak: msg.peak });
+        else if (msg.type === 'level') {
+          this.captureCounters = { packets: msg.packets, discontinuities: msg.discontinuities, frameGaps: msg.frameGaps };
+          this.inputLevel.emit({ rms: msg.rms, peak: msg.peak });
+        }
         else if (msg.type === 'clicks-scheduled') this.clicksScheduled.emit(msg.schedule);
       };
       capture.onprocessorerror = () => console.error('Trip Speaker capture stopped unexpectedly');

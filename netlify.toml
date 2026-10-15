@@ -1,0 +1,27 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# SPA fallback. Netlify serves existing files before redirect rules (no
+# force=true), so /assets/*.worklet-*.js are delivered as JavaScript, never as
+# this index.html fallback.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    # Tab capture for the host; no microphone or camera is ever needed.
+    Permissions-Policy = "display-capture=(self), microphone=(), camera=(), geolocation=()"

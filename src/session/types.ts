@@ -92,6 +92,7 @@ export interface HostSnapshot {
   links: LinkDiagnostics[];
   maxSpeakers: number;
   outputChanged: boolean;
+  captureCounters: { packets: number; discontinuities: number; frameGaps: number };
 }
 
 export type GuestStage = 'joining' | 'joined' | 'reconnecting' | 'failed' | 'ended' | 'removed' | 'rejected';

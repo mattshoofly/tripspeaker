@@ -116,7 +116,7 @@ export function HostRoom({ controller }: { controller: HostRoomController }) {
   const speakersReady = guests.length > 0 && guests.every((g) => g.phase === 'ready' || g.phase === 'playing' || g.phase === 'buffering');
   const open = s.stage === 'open';
 
-  const diagnostics = <Diagnostics role="host" local={s.local} links={s.links} />;
+  const diagnostics = <Diagnostics role="host" local={s.local} links={s.links} capture={s.captureCounters} />;
 
   return (
     <div className="room page room-page" data-testid="host-room" data-stage={s.stage}>

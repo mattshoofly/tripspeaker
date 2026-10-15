@@ -49,6 +49,40 @@ async function checkLayout(page: Page, label: string) {
   expect(clipped, `${label}: clipped text`).toEqual([]);
 }
 
+test.describe('room screens: names, targets, and 200% zoom', () => {
+  for (const fixture of ['host-setup', 'host-active', 'guest-enable', 'guest-active', 'guest-failed']) {
+    test(`${fixture}: every control is named and at least 44px`, async ({ page }) => {
+      await page.setViewportSize({ width: 1280, height: 800 });
+      await page.goto(`/?fixture=${fixture}`);
+      await settle(page);
+      const problems = await page.evaluate(() => {
+        const out: string[] = [];
+        for (const el of document.querySelectorAll<HTMLElement>('button, a[href], input, [role="switch"]')) {
+          if (el.closest('[inert], dialog:not([open]), [popover]:not(:popover-open)') || el.classList.contains('skip-link')) continue;
+          const r = el.getBoundingClientRect();
+          if (r.width === 0 && r.height === 0) continue;
+          const label = el.getAttribute('aria-label') || el.innerText?.trim() || (el.id && document.querySelector(`label[for="${el.id}"]`)?.textContent?.trim()) || '';
+          if (!label) out.push(`unnamed ${el.tagName}.${el.className}`);
+          if (r.height < 44 || r.width < 44) out.push(`small ${el.tagName} "${label}" ${Math.round(r.width)}×${Math.round(r.height)}`);
+        }
+        return out;
+      });
+      expect(problems).toEqual([]);
+    });
+  }
+
+  for (const fixture of ['host-active', 'guest-active', 'host-full']) {
+    test(`${fixture} at 200% zoom (720×450)`, async ({ page }) => {
+      await page.setViewportSize({ width: 720, height: 450 });
+      await page.goto(`/?fixture=${fixture}`);
+      await settle(page);
+      await checkLayout(page, `${fixture}@200%`);
+      await expect(page.getByRole('slider', { name: 'Volume on this Mac' })).toBeVisible();
+      await page.screenshot({ path: `test-results/visual/zoom200/${fixture}.png`, fullPage: true });
+    });
+  }
+});
+
 for (const size of SIZES) {
   test.describe(`states at ${size.name}`, () => {
     test.use({ viewport: { width: size.width, height: size.height } });

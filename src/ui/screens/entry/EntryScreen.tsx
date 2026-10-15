@@ -1,5 +1,5 @@
 import { AlertCircle, Download, Info, Laptop, Wifi } from 'lucide-react';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { startRoom } from '../../../session/app';
 import { gsap, useGSAP } from '../../motion/gsap';
 import { RevealHeadline } from '../../motion/RevealHeadline';
@@ -25,7 +25,7 @@ export function EntryScreen({ inviteCode }: { inviteCode: string | null }) {
   const joinRef = useRef<HTMLDivElement>(null);
   const joinHandle = useRef<JoinPanelHandle>(null);
   const joinButton = useRef<HTMLButtonElement>(null);
-  const support = useMemo(detectSupport, []);
+  const support = useMemo(() => detectSupport(), []);
   const notice = supportMessage(support);
   const compactStage = useMediaQuery('(max-width: 960px)');
 
@@ -52,7 +52,7 @@ export function EntryScreen({ inviteCode }: { inviteCode: string | null }) {
           gsap.fromTo(
             path,
             { strokeDasharray: len, strokeDashoffset: len },
-            { strokeDashoffset: 0, duration: 0.9, ease: 'power2.out', delay: 0.3, clearProps: 'strokeDasharray,strokeDashoffset' },
+            { strokeDashoffset: 0, duration: 0.6, ease: 'power2.out', delay: 0.2, clearProps: 'strokeDasharray,strokeDashoffset' },
           );
         });
         gsap.from('.stage-laptop', { opacity: 0, y: 10, duration: 0.5, stagger: 0.07, delay: 0.18, clearProps: 'opacity,transform' });
@@ -79,31 +79,28 @@ export function EntryScreen({ inviteCode }: { inviteCode: string | null }) {
   // never rewrites the inline opacity GSAP is animating.
   const [initialMode] = useState(mode);
 
-  const swap = useCallback(
-    contextSafe((next: 'intro' | 'join') => {
-      const incoming = next === 'join' ? joinRef.current : introRef.current;
-      const outgoing = next === 'join' ? introRef.current : joinRef.current;
-      setMode(next);
-      if (!incoming || !outgoing) return;
-      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      gsap.killTweensOf([incoming, outgoing]);
-      gsap.to(outgoing, {
-        opacity: 0,
-        y: reduce ? 0 : -6,
-        duration: 0.16,
-        ease: 'power2.out',
-        onComplete: () => void gsap.set(outgoing, { visibility: 'hidden', y: 0 }),
-      });
-      gsap.set(incoming, { visibility: 'visible' });
-      gsap.fromTo(incoming, { opacity: 0, y: reduce ? 0 : 8 }, { opacity: 1, y: 0, duration: 0.22, delay: 0.05, ease: 'power3.out' });
-      // Focus moves immediately; the fade never blocks typing.
-      requestAnimationFrame(() => {
-        if (next === 'join') joinHandle.current?.focusCode();
-        else joinButton.current?.focus({ preventScroll: true });
-      });
-    }),
-    [],
-  );
+  const swap = contextSafe((next: 'intro' | 'join') => {
+    const incoming = next === 'join' ? joinRef.current : introRef.current;
+    const outgoing = next === 'join' ? introRef.current : joinRef.current;
+    setMode(next);
+    if (!incoming || !outgoing) return;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    gsap.killTweensOf([incoming, outgoing]);
+    gsap.to(outgoing, {
+      opacity: 0,
+      y: reduce ? 0 : -6,
+      duration: 0.16,
+      ease: 'power2.out',
+      onComplete: () => void gsap.set(outgoing, { visibility: 'hidden', y: 0 }),
+    });
+    gsap.set(incoming, { visibility: 'visible' });
+    gsap.fromTo(incoming, { opacity: 0, y: reduce ? 0 : 8 }, { opacity: 1, y: 0, duration: 0.22, delay: 0.05, ease: 'power3.out' });
+    // Focus moves immediately; the fade never blocks typing.
+    requestAnimationFrame(() => {
+      if (next === 'join') joinHandle.current?.focusCode();
+      else joinButton.current?.focus({ preventScroll: true });
+    });
+  });
 
   return (
     <div className="screen entry" ref={rootRef}>

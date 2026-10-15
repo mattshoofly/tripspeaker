@@ -3,7 +3,7 @@ import type { ConnectionConfig } from '../config';
 
 export type { DataConnection, Peer };
 
-export function createPeer(config: ConnectionConfig, id?: string): Peer {
+export function createPeer(config: ConnectionConfig, iceServers: RTCIceServer[], id?: string): Peer {
   const options: PeerOptions = { debug: 1 };
   if (config.signaling) {
     options.host = config.signaling.host;
@@ -12,7 +12,9 @@ export function createPeer(config: ConnectionConfig, id?: string): Peer {
     options.secure = config.signaling.secure;
     options.key = config.signaling.key;
   }
-  if (config.iceServers) options.config = { iceServers: config.iceServers };
+  // Test hook: forcing relay-only reproduces a network with no direct route.
+  const policy = (globalThis as { __TRIP_SPEAKER_TEST__?: { iceTransportPolicy?: RTCIceTransportPolicy } }).__TRIP_SPEAKER_TEST__?.iceTransportPolicy;
+  options.config = { iceServers, ...(policy ? { iceTransportPolicy: policy } : {}) };
   return id ? new Peer(id, options) : new Peer(options);
 }
 

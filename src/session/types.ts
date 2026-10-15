@@ -3,6 +3,7 @@ import type { TimingDiagnostics } from '../audio/timing';
 import type { SharingState, SpeakerPhase, SpeakerRole } from '../core/protocol';
 import type { RendererStats } from '../core/renderer';
 import type { JoinErrorKind } from '../net/errors';
+import type { ConnectionReport } from '../net/diagnose';
 import type { ChannelInfo } from '../net/peer';
 
 export interface SpeakerView {
@@ -93,6 +94,9 @@ export interface HostSnapshot {
   maxSpeakers: number;
   outputChanged: boolean;
   captureCounters: { packets: number; discontinuities: number; frameGaps: number };
+  /** Laptops that reached the room but couldn't open a connection, since last dismissed. */
+  failedJoins: number;
+  relayConfigured: boolean;
 }
 
 export type GuestStage = 'joining' | 'joined' | 'reconnecting' | 'failed' | 'ended' | 'removed' | 'rejected';
@@ -118,4 +122,5 @@ export interface GuestSnapshot {
   clicksActive: boolean;
   outputChanged: boolean;
   commonBufferMs: number;
+  connectionReport: ConnectionReport | null;
 }

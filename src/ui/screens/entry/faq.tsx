@@ -53,10 +53,16 @@ export const FAQ: AccordionEntry[] = [
     id: 'connect',
     title: 'Why won’t a laptop connect?',
     body: (
-      <p>
-        Some hotel and campus networks stop devices from reaching each other. Try a phone hotspot or another Wi-Fi network. Trip Speaker
-        also needs the internet for a moment to introduce laptops, and every laptop should stay open and awake.
-      </p>
+      <>
+        <p>
+          On a Mac, Chrome needs Local Network access: open System Settings → Privacy & Security → Local Network and switch on Google
+          Chrome on every laptop, then reload Trip Speaker. Turn off VPNs too.
+        </p>
+        <p>
+          Guest, hotel, and office Wi-Fi often stops devices from reaching each other. Try a phone hotspot or a home network. Trip Speaker
+          also needs the internet for a moment to introduce laptops, and every laptop should stay open and awake.
+        </p>
+      </>
     ),
   },
 ];

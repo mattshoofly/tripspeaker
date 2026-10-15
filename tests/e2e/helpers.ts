@@ -13,20 +13,23 @@ export interface ParticipantOptions {
   sampleRate?: number;
   reducedMotion?: 'reduce' | 'no-preference';
   viewport?: { width: number; height: number };
+  /** Test hook: 'relay' with no TURN server leaves this laptop no usable route. */
+  iceTransportPolicy?: 'relay';
 }
 
 /** Each participant is its own browser context: separate storage, clock origin, and peer. */
 export async function participant(browser: Browser, name: string, o: ParticipantOptions): Promise<Participant> {
   const context = await browser.newContext({ viewport: o.viewport ?? { width: 1280, height: 800 }, reducedMotion: o.reducedMotion ?? 'no-preference' });
   await context.addInitScript(
-    ({ ns, capture, sampleRate }) => {
+    ({ ns, capture, sampleRate, iceTransportPolicy }) => {
       localStorage.setItem(
         'tripspeaker:connection',
         JSON.stringify({ signaling: { host: '127.0.0.1', port: 9417, path: '/ts', secure: false }, iceServers: [], namespace: ns }),
       );
-      if (capture || sampleRate) (window as unknown as { __TRIP_SPEAKER_TEST__: unknown }).__TRIP_SPEAKER_TEST__ = { capture, sampleRate };
+      if (capture || sampleRate || iceTransportPolicy)
+        (window as unknown as { __TRIP_SPEAKER_TEST__: unknown }).__TRIP_SPEAKER_TEST__ = { capture, sampleRate, iceTransportPolicy };
     },
-    { ns: o.namespace, capture: o.capture, sampleRate: o.sampleRate },
+    { ns: o.namespace, capture: o.capture, sampleRate: o.sampleRate, iceTransportPolicy: o.iceTransportPolicy },
   );
   const page = await context.newPage();
   const errors: string[] = [];

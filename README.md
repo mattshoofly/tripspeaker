@@ -93,12 +93,32 @@ Everything here is public: Vite inlines `VITE_*` values into the browser bundle.
 | Variable | Purpose |
 |---|---|
 | `VITE_PEER_HOST`, `VITE_PEER_PORT`, `VITE_PEER_PATH`, `VITE_PEER_SECURE` | Use your own PeerJS server instead of `0.peerjs.com` |
-| `VITE_ICE_SERVERS` | JSON list of public STUN/TURN servers. If unset, PeerJS's defaults are used: Google STUN plus PeerJS's public TURN. |
+| `VITE_ICE_SERVERS` | JSON list of public STUN/TURN servers. If unset, Trip Speaker uses Google and Cloudflare STUN, plus a relay only if one is configured below. (PeerJS's built-in TURN hosts no longer resolve, so they aren't used.) |
 | `VITE_ROOM_NAMESPACE` | Keeps rooms from different deployments apart (default: a hash of the site host) |
 
 You can also set these per browser in **Help → Advanced connection**. Every laptop in a room must match.
 
 For testing without the internet, `npm run peer:local` starts a local PeerJS server on port 9417 (path `/ts`). It's for tests and LAN experiments only; production stays a static site.
+
+## If laptops won't connect
+
+"Your network is blocking the connection" means the host answered but the two laptops couldn't open a direct route. The join screen now lists what was tried, under **What to try → Technical details**. In order of likelihood:
+
+1. **macOS Local Network permission.** On each Mac, open **System Settings → Privacy & Security → Local Network**, switch on **Google Chrome**, and reload Trip Speaker on both laptops.
+2. **VPNs.** Turn them off on both laptops.
+3. **The Wi-Fi keeps devices apart.** Guest, hotel, office, and some mesh networks do this ("client isolation"). Try a phone hotspot or a home network, or add a relay (below).
+
+"The host isn't answering" means the code was found but the host's laptop didn't respond. Check that it's awake, with Trip Speaker open and the room still running.
+
+### Relay for restrictive networks
+
+A TURN relay forwards audio when no direct route exists. Its key is a secret, so it stays in a Netlify Function (`netlify/functions/ice.mts`) that hands the browser short-lived credentials. The key never goes into a `VITE_*` variable.
+
+1. In the Cloudflare dashboard, go to **Realtime → TURN** and create a TURN key. Note the **Key ID** and **API token**.
+2. In Netlify, open **Site configuration → Environment variables** and add `CLOUDFLARE_TURN_KEY_ID` and `CLOUDFLARE_TURN_API_TOKEN`, scoped to Functions.
+3. Redeploy. Visiting `https://<your-site>/.netlify/functions/ice` should show `{"configured":true}`, and Sound settings → diagnostics shows **Relay server (TURN): Configured**.
+
+Relayed audio is about 0.8 Mbit/s per guest and passes through Cloudflare, so the direct route is still preferred whenever it works.
 
 ## Scripts
 
@@ -141,7 +161,7 @@ tests/
 
 - Built for **Chrome on macOS**. Automated tests ran in Chrome 154 on Linux. **Physical MacBooks and real Spotify capture have not been tested yet**; TESTING.md has the checklist.
 - Tab capture of Spotify depends on Chrome, the site, and settings. If the shared tab is silent, Trip Speaker says so instead of guessing why.
-- Being on the same Wi-Fi doesn't guarantee a connection. Hotel and campus networks often isolate clients. STUN is not TURN, and PeerJS's public TURN is best-effort.
+- Being on the same Wi-Fi doesn't guarantee a connection. Hotel and campus networks often isolate clients, and Chrome needs macOS Local Network permission. Without a configured relay there's no fallback: PeerJS's built-in TURN servers no longer exist, and the free Open Relay credentials no longer work.
 - Sync is an engineering target, not a guarantee. Laptops a few metres apart differ by a few milliseconds just from the speed of sound.
 - Chrome 154 refuses `echoCancellation: false` for tab audio. Trip Speaker turns off noise suppression and auto-gain where allowed and reports the result in Sound settings.
 - No host migration: if the host closes the tab, the room ends.

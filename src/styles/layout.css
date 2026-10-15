@@ -282,6 +282,69 @@
   grid-column: 2;
 }
 
+.conn-help {
+  margin-top: -8px;
+  padding: 0 16px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-inner);
+  background: var(--white-wash);
+  color: var(--text-2);
+  font-size: var(--fs-small);
+}
+
+.conn-help summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  color: var(--text);
+  font-weight: var(--w-medium);
+  list-style: none;
+  cursor: pointer;
+}
+
+.conn-help summary::-webkit-details-marker {
+  display: none;
+}
+
+.conn-help summary svg {
+  width: 16px;
+  height: 16px;
+  transition: transform var(--t-med) var(--ease-out);
+}
+
+.conn-help details[open] > summary svg,
+.conn-help[open] > summary svg {
+  transform: rotate(180deg);
+}
+
+.conn-tips {
+  display: grid;
+  gap: 8px;
+  padding-left: 20px;
+  list-style: decimal;
+}
+
+.conn-tips li::marker {
+  color: var(--text-3);
+}
+
+.conn-facts {
+  margin-top: 8px;
+  border-top: 1px solid var(--hairline);
+}
+
+.conn-facts summary {
+  color: var(--text-2);
+}
+
+.conn-facts ul {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 8px;
+  color: var(--text-3);
+}
+
 .join-pending {
   display: flex;
   align-items: center;

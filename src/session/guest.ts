@@ -17,7 +17,9 @@ import type { RendererStats } from '../core/renderer';
 import { hostPeerId, isValidRoomCode } from '../core/roomCode';
 import { ActivityDetector, deriveSpeakerPhase } from '../core/status';
 import { resolveConnectionConfig, type ConnectionConfig } from '../config';
+import { classifyFailure, collectConnectionReport, reportText, type ConnectionReport } from '../net/diagnose';
 import { rejectToJoinError, signalingErrorToJoinError, type JoinErrorKind } from '../net/errors';
+import { hasRelay, resolveIceServers } from '../net/ice';
 import { createPeer, describeChannel, peerErrorType, waitForOpen, type DataConnection, type Peer } from '../net/peer';
 import { loadPrefs, savePrefs } from './prefs';
 import { Store } from './store';
@@ -25,7 +27,7 @@ import { perfAt } from '../core/anchor';
 import type { GuestSnapshot, GuestStage, SpeakerView, SyncProbe } from './types';
 import { WakeLock } from './wakeLock';
 
-export type JoinResult = { ok: true } | { ok: false; error: JoinErrorKind };
+export type JoinResult = { ok: true } | { ok: false; error: JoinErrorKind; report?: ConnectionReport | null };
 
 const RECONNECT_DELAYS = [500, 1000, 2000, 3000, 5000, 8000, 12000, 16000];
 const MIN_CLOCK_SAMPLES = 8;
@@ -42,6 +44,8 @@ export class GuestController {
   private readonly clientId: string;
   private readonly config: ConnectionConfig;
   private peer: Peer | null = null;
+  private iceServers: RTCIceServer[] | null = null;
+  private lastReport: ConnectionReport | null = null;
   private control: DataConnection | null = null;
   private audioConn: DataConnection | null = null;
   private audioRetries = 0;
@@ -107,6 +111,10 @@ export class GuestController {
     return result;
   }
 
+  get connectionReport(): ConnectionReport | null {
+    return this.lastReport;
+  }
+
   // -------------------------------------------------------------- connection
 
   private async ensurePeer(): Promise<{ ok: true; peer: Peer } | { ok: false; error: JoinErrorKind }> {
@@ -120,7 +128,9 @@ export class GuestController {
       }
     }
     if (!peer || peer.destroyed) {
-      peer = createPeer(this.config);
+      if (!this.iceServers) this.iceServers = await resolveIceServers(this.config);
+      if (this.disposed) return { ok: false, error: 'signaling' };
+      peer = createPeer(this.config, this.iceServers);
       peer.on('error', () => undefined);
       this.peer = peer;
     }
@@ -141,17 +151,23 @@ export class GuestController {
         peer.off('error', onPeerError);
         resolve(v);
       };
+      // PeerJS also reports per-candidate failures as peer-level "webrtc"
+      // errors; those are not fatal, so only ICE failure or the timeout end
+      // the attempt.
       const onPeerError = (err: unknown) => {
         const type = peerErrorType(err);
         const message = String((err as { message?: string })?.message ?? '');
         if (type === 'peer-unavailable' && (message.includes(hostId) || !message)) finish('not-found');
         else if (type === 'network' || type === 'server-error' || type === 'socket-error' || type === 'socket-closed') finish('signaling');
-        else if (type === 'webrtc') finish('timeout');
       };
       const timer = setTimeout(() => finish('timeout'), CONNECT_TIMEOUT_MS);
       peer.on('error', onPeerError);
       conn.on('open', () => finish('open'));
-      conn.on('error', () => finish('timeout'));
+      conn.on('error', (err) => {
+        const type = peerErrorType(err);
+        if (type === 'negotiation-failed') finish('timeout');
+        else if (type === 'connection-closed') finish('host-unavailable');
+      });
       conn.on('close', () => finish('host-unavailable'));
     });
   }
@@ -186,9 +202,15 @@ export class GuestController {
       return { ok: false, error: 'signaling' };
     }
     if (opened !== 'open') {
+      const report = opened === 'timeout' || opened === 'host-unavailable' ? await collectConnectionReport(conn.peerConnection, hasRelay(this.iceServers ?? [])) : null;
       conn.close();
-      return { ok: false, error: opened };
+      this.lastReport = report;
+      if (report) console.warn('Trip Speaker: connection to the host failed', reportText(report));
+      // No answer at all means the host isn't there; an answer with no working route means the network.
+      const error: JoinErrorKind = report ? (classifyFailure(report) === 'host-silent' ? 'host-unavailable' : 'timeout') : opened;
+      return { ok: false, error, report };
     }
+    this.lastReport = null;
     this.control = conn;
     conn.on('close', () => this.onControlClosed(conn));
     const replyPromise = this.waitForReply();
@@ -746,6 +768,7 @@ export class GuestController {
       clicksActive: false,
       outputChanged: this.outputChanged,
       commonBufferMs: this.room?.commonBufferMs ?? 1200,
+      connectionReport: this.lastReport,
     };
   }
 }

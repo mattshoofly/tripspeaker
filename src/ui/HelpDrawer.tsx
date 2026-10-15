@@ -29,7 +29,10 @@ export function HelpDrawer({ open, onClose }: { open: boolean; onClose: () => vo
           <dt>A laptop is silent</dt>
           <dd>Click Enable this speaker on it, check its volume, and make sure it isn’t muted in Trip Speaker.</dd>
           <dt>Nobody can connect</dt>
-          <dd>Your network may keep devices apart. Try a phone hotspot. Trip Speaker needs the internet briefly to introduce laptops.</dd>
+          <dd>
+            On each Mac, allow Google Chrome under System Settings → Privacy & Security → Local Network, turn off VPNs, and reload. Guest,
+            hotel, and office Wi-Fi may keep devices apart; try a phone hotspot. Trip Speaker needs the internet briefly to introduce laptops.
+          </dd>
           <dt>Sound stops when a lid closes</dt>
           <dd>Mac audio sleeps with the lid closed. Keep laptops open; Trip Speaker asks Chrome to keep the screen awake where it can.</dd>
         </dl>

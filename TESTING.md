@@ -56,7 +56,7 @@ These use **real local WebRTC** between separate browser contexts through a loca
 | Test | What it verifies |
 |---|---|
 | `room.spec.ts` — host and two guests | Creates a real room, reads the code **from the screen**, two guests join with it and click **Enable this speaker**. The host shares the tone tab and the input meter reports sound. Every renderer reaches *playing* with non-silent output, more than 100 packets and 0 underruns. **Clock offset θ is compared with the true difference between the pages' `performance.timeOrigin`.** **The source position each device is scheduled to be heard at is compared on one wall clock across host + guests.** Channel inspection confirms `ordered: false`, `maxRetransmits: null`. Also covers guest volume and mute (gain goes to 0 while the renderer keeps advancing), **a third guest joining mid-song** (host epoch unchanged, no restart, scheduled within tolerance), **a dropped guest reconnecting into the same slot and order**, and **End room** reaching every guest. |
-| `errors.spec.ts` | wrong code → "No room found." with the value kept and refocused · incomplete code rejected inline · **signaling unavailable** · **a host ID that registers but never answers → "Your network is blocking the connection."** after the timeout · **locked** room refuses, then admits after unlocking · **full** room (host + 4) refuses a 6th · host **removes** a guest · **closing the host tab** ends the room for guests · capture fixtures: **cancel**, **no audio**, **window instead of tab**, **silent tab** (reported without guessing a cause) |
+| `errors.spec.ts` | wrong code → "No room found." with the value kept and refocused · incomplete code rejected inline · **signaling unavailable** · **a host ID that registers but never answers → "The host isn't answering."** with host-focused help · **a guest with no usable network route (relay-only ICE, no TURN) → "Your network is blocking the connection."** with Local Network / VPN / isolation steps and technical details, and **the host is told a laptop couldn't connect** · **locked** room refuses, then admits after unlocking · **full** room (host + 4) refuses a 6th · host **removes** a guest · **closing the host tab** ends the room for guests · capture fixtures: **cancel**, **no audio**, **window instead of tab**, **silent tab** (reported without guessing a cause) |
 | `rates-and-motion.spec.ts` | **44.1 kHz host → 48 kHz guest and 48 kHz host → 44.1 kHz guest**, both playing, 0 underruns, scheduled together · **playback with animated UI in use (drawers, popovers, trim nudges, viewport resizes), once with motion and once with reduced motion**: underruns, missing samples, late packets, and resyncs must not increase, and frames played must keep pace with wall time |
 
 ### Measured in this environment
@@ -78,6 +78,15 @@ Chrome 154, Linux, virtual audio output, loopback networking. These are ranges a
 One run with a second Chrome open on the desktop measured a late joiner 22 ms off at 1.5 s after it started. The cause was clock samples inflated by load and a deliberately slow 2 ms-per-update offset slew. Guests now wait for 8 exchanges before playing, smooth faster for the first 10 s, and apply corrections larger than 3 ms with a crossfade instead of a multi-second resample. After that change, three consecutive runs under the same load passed.
 
 The motion-on gaps came from host CPU starvation in this sandbox, not from the UI thread or the network. Audio runs on Chrome's real-time audio thread, separate from GSAP and React. Since then, a skip only loses the skipped frames; the partial packet is sent as a short packet instead of dropped. Trip Speaker also requests `latencyHint: 'playback'`, which gives the audio thread more slack, because the 1.2 s shared delay makes low output latency pointless. Host diagnostics show "audio clock skips" so this is visible on real hardware.
+
+### Live-site connectivity checks
+
+Run from this VM against `https://trip-speaker.netlify.app`:
+- Host and guest in separate browser contexts on one machine joined in about 1 s.
+- **PeerJS's default TURN hosts (`eu-0`/`us-0.turn.peerjs.com`) don't resolve,** and the old Open Relay static credentials return no relay candidates. So without a configured relay, two laptops that can't reach each other directly have no fallback.
+- Google STUN works (server-reflexive candidates gathered).
+
+This is why a laptop on a network that keeps devices apart sees "Your network is blocking the connection". The fix is on the network side (macOS Local Network permission, VPN, client isolation) or an optional Cloudflare relay (README).
 
 ### Manual walkthrough in desktop Chrome (recorded)
 

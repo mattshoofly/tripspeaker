@@ -110,6 +110,8 @@ function hostSnapshot(over: Partial<HostSnapshot> = {}): HostSnapshot {
     maxSpeakers: 5,
     outputChanged: false,
     captureCounters: { packets: 18234, discontinuities: 0, frameGaps: 0 },
+    failedJoins: 0,
+    relayConfigured: false,
     ...over,
   };
 }
@@ -144,6 +146,7 @@ function guestSnapshot(over: Partial<GuestSnapshot> = {}): GuestSnapshot {
     clicksActive: false,
     outputChanged: false,
     commonBufferMs: 1200,
+    connectionReport: null,
     ...over,
   };
 }
@@ -173,6 +176,7 @@ function hostController(snapshot: HostSnapshot, level: number): HostRoomControll
     setGuestVolume: noop,
     setAllMuted: noop,
     removeGuest: noop,
+    dismissFailedJoins: () => store.update((s) => ({ ...s, failedJoins: 0 })),
     end: async () => undefined,
   };
 }

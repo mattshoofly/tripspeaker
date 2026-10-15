@@ -18,6 +18,7 @@ import { Waveform } from '../../visual/Waveform';
 import { CalibrationDrawer } from './CalibrationDrawer';
 import { Diagnostics } from './Diagnostics';
 import { VisualizerChoice } from './HostSettingsDrawer';
+import { ConnectionHelp } from '../../ConnectionHelp';
 import { RoomEnded } from './RoomEnded';
 import { formatPct, RoomCode, useSnapshot } from './shared';
 import { SpeakerStrip } from './SpeakerStrip';
@@ -160,11 +161,14 @@ export function GuestRoom({ controller }: { controller: GuestRoomController }) {
               </h1>
               <p className="listen-body">{h.body}</p>
               {s.stage === 'failed' ? (
-                <div className="listen-actions">
-                  <Button variant="primary" icon={RefreshCw} onClick={() => controller.retry()}>
-                    Try again
-                  </Button>
-                </div>
+                <>
+                  <div className="listen-actions">
+                    <Button variant="primary" icon={RefreshCw} onClick={() => controller.retry()}>
+                      Try again
+                    </Button>
+                  </div>
+                  {s.connectionReport ? <ConnectionHelp report={s.connectionReport} /> : null}
+                </>
               ) : null}
             </>
           )}

@@ -5,6 +5,11 @@
 [build.environment]
   NODE_VERSION = "22"
 
+# Optional relay credentials (see README → Relay for restrictive networks).
+# Served at /.netlify/functions/ice, which the SPA fallback never intercepts.
+[functions]
+  directory = "netlify/functions"
+
 # SPA fallback. Netlify serves existing files before redirect rules (no
 # force=true), so /assets/*.worklet-*.js are delivered as JavaScript, never as
 # this index.html fallback.

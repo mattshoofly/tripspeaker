@@ -41,6 +41,7 @@ export type HostRoomController = Pick<
   | 'setGuestVolume'
   | 'setAllMuted'
   | 'removeGuest'
+  | 'dismissFailedJoins'
   | 'end'
 > & { engine: { readonly inputAnalyser: AnalyserNode | null; readonly outputAnalyser: AnalyserNode | null } };
 import type { HostSnapshot } from '../../../session/types';
@@ -116,7 +117,7 @@ export function HostRoom({ controller }: { controller: HostRoomController }) {
   const speakersReady = guests.length > 0 && guests.every((g) => g.phase === 'ready' || g.phase === 'playing' || g.phase === 'buffering');
   const open = s.stage === 'open';
 
-  const diagnostics = <Diagnostics role="host" local={s.local} links={s.links} capture={s.captureCounters} />;
+  const diagnostics = <Diagnostics role="host" local={s.local} links={s.links} capture={s.captureCounters} relayConfigured={s.relayConfigured} />;
 
   return (
     <div className="room page room-page" data-testid="host-room" data-stage={s.stage}>
@@ -254,6 +255,23 @@ export function HostRoom({ controller }: { controller: HostRoomController }) {
               }
             >
               {CAPTURE_COPY[s.capture.error].body}
+            </Notice>
+          ) : null}
+          {s.failedJoins > 0 ? (
+            <Notice
+              tone="alert"
+              icon={WifiOff}
+              title={s.failedJoins === 1 ? 'A laptop found this room but couldn’t connect.' : `${s.failedJoins} attempts to join couldn’t connect.`}
+              testId="failed-join-notice"
+              actions={
+                <Button size="sm" variant="quiet" onClick={() => controller.dismissFailedJoins()}>
+                  Dismiss
+                </Button>
+              }
+            >
+              On each Mac, allow Google Chrome under System Settings → Privacy & Security → Local Network, and turn off VPNs. Guest, hotel, and
+              office Wi-Fi can block laptops from reaching each other; a phone hotspot usually works.
+              {s.relayConfigured ? null : ' No relay server is configured for this site.'}
             </Notice>
           ) : null}
           {sharing && s.capture.suppression === 'off' ? (

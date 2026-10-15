@@ -50,7 +50,7 @@ test.describe('joining errors', () => {
     }
   });
 
-  test('a host that never answers times out with network guidance', async ({ browser }) => {
+  test('a host that registered but never answers is reported as the host, not the network', async ({ browser }) => {
     test.setTimeout(90_000);
     const ns = uniqueNamespace('zombie');
     // Registers the room's peer ID on the signaling server but never answers offers.
@@ -60,11 +60,37 @@ test.describe('joining errors', () => {
     try {
       await attemptJoin(g, '5150');
       await expect(g.page.getByRole('button', { name: 'Looking for the room…' })).toBeVisible();
-      await expect(g.page.getByTestId('join-error')).toContainText('Your network is blocking the connection.', { timeout: 40_000 });
-      await expect(g.page.getByTestId('join-error')).toContainText('Try another Wi-Fi network or a hotspot');
+      await expect(g.page.getByTestId('join-error')).toContainText('The host isn’t answering.', { timeout: 40_000 });
+      const help = g.page.getByTestId('connection-help');
+      await expect(help).toHaveAttribute('data-kind', 'host-silent');
+      await expect(help).toContainText('Make sure the host’s laptop is awake');
     } finally {
       zombie.close();
       await closeAll(g);
+    }
+  });
+
+  test('no usable network route: the guest gets actionable help and the host is told', async ({ browser }) => {
+    test.setTimeout(120_000);
+    const ns = uniqueNamespace('blocked');
+    const host = await participant(browser, 'Host', { namespace: ns });
+    const g = await participant(browser, 'Blocked guest', { namespace: ns, iceTransportPolicy: 'relay' });
+    try {
+      const code = await startRoom(host);
+      await attemptJoin(g, code);
+      await expect(g.page.getByTestId('join-error')).toContainText('Your network is blocking the connection.', { timeout: 40_000 });
+      const help = g.page.getByTestId('connection-help');
+      await expect(help).toHaveAttribute('data-kind', 'no-local-path');
+      await expect(help).toContainText('Local Network');
+      await help.getByText('Technical details').click();
+      await expect(help).toContainText('The host’s laptop answered.');
+      await expect(help).toContainText('No relay server is configured');
+      await expect(g.page.getByLabel('Room code, four digits')).toHaveValue(code);
+      await expect(host.page.getByTestId('failed-join-notice')).toContainText('A laptop found this room but couldn’t connect.', { timeout: 30_000 });
+      await host.page.getByTestId('failed-join-notice').getByRole('button', { name: 'Dismiss' }).click();
+      await expect(host.page.getByTestId('failed-join-notice')).toBeHidden();
+    } finally {
+      await closeAll(host, g);
     }
   });
 

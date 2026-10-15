@@ -24,7 +24,8 @@ import { buildInviteUrl, claimRoomCode, hostPeerId, RoomCodeUnavailableError } f
 import { ActivityDetector, deriveSpeakerPhase } from '../core/status';
 import { clickScheduleEnd } from '../core/testSignal';
 import { resolveConnectionConfig, type ConnectionConfig } from '../config';
-import { bufferedAmount, createPeer, describeChannel, waitForOpen, type DataConnection, type Peer } from '../net/peer';
+import { hasRelay, resolveIceServers } from '../net/ice';
+import { bufferedAmount, createPeer, describeChannel, peerErrorType, waitForOpen, type DataConnection, type Peer } from '../net/peer';
 import { loadPrefs, savePrefs } from './prefs';
 import { Store } from './store';
 import { perfAt } from '../core/anchor';
@@ -95,6 +96,8 @@ export class HostController {
   private emitQueued = false;
   private disposed = false;
   private outputChanged = false;
+  private failedJoins = 0;
+  private relayConfigured = false;
   private readonly wakeLock = new WakeLock();
 
   /** Call from the "Start a room" click: the AudioContext is created under that gesture. */
@@ -149,10 +152,12 @@ export class HostController {
     window.addEventListener('pagehide', this.onPageHide);
     this.timing.tick(true);
 
+    const iceServers = await resolveIceServers(this.config);
+    this.relayConfigured = hasRelay(iceServers);
     try {
       await claimRoomCode(async (code) => {
         if (this.disposed) return { ok: false, reason: 'error', error: new Error('disposed') };
-        const peer = createPeer(this.config, hostPeerId(this.config.namespace, code));
+        const peer = createPeer(this.config, iceServers, hostPeerId(this.config.namespace, code));
         const outcome = await waitForOpen(peer, 12_000);
         if (outcome.kind === 'open') {
           this.peer = peer;
@@ -246,7 +251,23 @@ export class HostController {
       return;
     }
     let helloTimer: ReturnType<typeof setTimeout> | null = null;
+    let opened = false;
+    let counted = false;
+    // A laptop reached the room but no direct route opened (Wi-Fi isolation,
+    // macOS Local Network permission, VPN). Tell the host it happened.
+    const failed = () => {
+      if (opened || counted || this.disposed) return;
+      counted = true;
+      this.failedJoins++;
+      this.queueEmit();
+    };
+    const openTimer = setTimeout(failed, 20_000);
+    conn.on('iceStateChanged', (state) => {
+      if (state === 'failed') failed();
+    });
     conn.on('open', () => {
+      opened = true;
+      clearTimeout(openTimer);
       helloTimer = setTimeout(() => {
         if (!this.controlOwners.has(conn)) conn.close();
       }, HELLO_TIMEOUT_MS);
@@ -267,9 +288,17 @@ export class HostController {
     });
     conn.on('close', () => {
       if (helloTimer) clearTimeout(helloTimer);
+      clearTimeout(openTimer);
       this.onControlClosed(conn);
     });
-    conn.on('error', () => undefined);
+    conn.on('error', (err) => {
+      if (peerErrorType(err) === 'negotiation-failed') failed();
+    });
+  }
+
+  dismissFailedJoins(): void {
+    this.failedJoins = 0;
+    this.queueEmit();
   }
 
   private onHello(conn: DataConnection, incoming: HelloMessage): void {
@@ -880,6 +909,8 @@ export class HostController {
       links,
       maxSpeakers: MAX_SPEAKERS,
       outputChanged: this.outputChanged,
+      failedJoins: this.failedJoins,
+      relayConfigured: this.relayConfigured,
       captureCounters: this.engine?.captureCounters ?? { packets: 0, discontinuities: 0, frameGaps: 0 },
     };
   }

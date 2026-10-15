@@ -98,7 +98,7 @@ export const JoinPanel = forwardRef<JoinPanelHandle, JoinPanelProps>(function Jo
             type="text"
             autoComplete="off"
             maxLength={32}
-            placeholder="Sam’s MacBook Air"
+            placeholder="e.g. Sam’s MacBook Air"
             value={name}
             onChange={(e) => setName(e.currentTarget.value)}
           />

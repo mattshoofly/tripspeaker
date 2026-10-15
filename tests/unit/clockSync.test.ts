@@ -89,4 +89,17 @@ describe('OffsetSmoother', () => {
     const big = s.update(400);
     expect(big).toEqual({ value: 400, jumped: true });
   });
+
+  it('converges faster while a new sync is settling', () => {
+    const slow = new OffsetSmoother(0.3, 2, 25);
+    const fast = new OffsetSmoother(0.3, 2, 25);
+    slow.update(0);
+    fast.update(0);
+    for (let i = 0; i < 5; i++) {
+      slow.update(20);
+      fast.update(20, true);
+    }
+    expect(slow.value).toBeCloseTo(10, 6);
+    expect(fast.value!).toBeGreaterThan(19);
+  });
 });

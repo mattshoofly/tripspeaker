@@ -159,6 +159,7 @@ test.describe('real WebRTC room', () => {
         expect(hostAfter!.framesPlayed).toBeGreaterThan(hostBefore!.framesPlayed);
         await c.page.waitForTimeout(1500);
         const report = compareProbes([(await probe(host.page))!, (await probe(c.page))!]);
+        test.info().annotations.push({ type: 'late-join', description: `Guest C scheduled ${report.maxSpreadMs.toFixed(2)} ms from the host 1.5 s after it started` });
         expect(report.maxSpreadMs).toBeLessThan(20);
       });
 

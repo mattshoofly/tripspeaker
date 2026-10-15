@@ -64,6 +64,9 @@ export class TimingController {
 
   setTheta(theta: number | null): void {
     if (this.role === 'host') return;
+    // A sizeable correction (sync still settling) is applied with a short
+    // crossfade instead of a multi-second resampling slew.
+    if (theta !== null && this.theta !== null && Math.abs(theta - this.theta) > 3) this.promptNext = true;
     this.theta = theta;
   }
 

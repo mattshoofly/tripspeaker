@@ -184,13 +184,16 @@ export class OffsetSmoother {
     return this.current;
   }
 
-  update(estimate: number): SmoothedOffset {
+  /** `settling` follows the estimate faster while a new sync is still converging. */
+  update(estimate: number, settling = false): SmoothedOffset {
     if (this.current === null || Math.abs(estimate - this.current) > this.snapMs) {
       const jumped = this.current !== null;
       this.current = estimate;
       return { value: estimate, jumped };
     }
-    const step = Math.max(-this.maxStepMs, Math.min(this.maxStepMs, (estimate - this.current) * this.gain));
+    const gain = settling ? Math.max(this.gain, 0.6) : this.gain;
+    const maxStep = settling ? Math.max(this.maxStepMs, 8) : this.maxStepMs;
+    const step = Math.max(-maxStep, Math.min(maxStep, (estimate - this.current) * gain));
     this.current += step;
     return { value: this.current, jumped: false };
   }

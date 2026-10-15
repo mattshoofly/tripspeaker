@@ -28,6 +28,8 @@ import { WakeLock } from './wakeLock';
 export type JoinResult = { ok: true } | { ok: false; error: JoinErrorKind };
 
 const RECONNECT_DELAYS = [500, 1000, 2000, 3000, 5000, 8000, 12000, 16000];
+const MIN_CLOCK_SAMPLES = 8;
+const SETTLE_MS = 10_000;
 const CONNECT_TIMEOUT_MS = 15_000;
 const WELCOME_TIMEOUT_MS = 8_000;
 
@@ -52,6 +54,7 @@ export class GuestController {
   private audioState: GuestSnapshot['audio'] = 'off';
   private readonly clock = new ClockSyncEstimator();
   private readonly offset = new OffsetSmoother();
+  private syncStartedAt: number | null = null;
   private pingSeq = 0;
   private readonly pendingPings = new Map<number, number>();
   private pingTimer: ReturnType<typeof setInterval> | null = null;
@@ -224,6 +227,7 @@ export class GuestController {
     if (!sameSession) {
       this.clock.reset();
       this.offset.reset();
+      this.syncStartedAt = null;
       this.hostMap = null;
     }
     this.applyRoomToAudio();
@@ -319,8 +323,10 @@ export class GuestController {
         this.pendingPings.delete(msg.seq);
         if (!this.clock.add(c1, msg.h2, msg.h3, receivedAt)) return;
         const est = this.clock.estimate(receivedAt);
-        if (est) {
-          this.offset.update(est.theta);
+        // Playback waits for enough exchanges that the lowest-RTT ones dominate.
+        if (est && est.total >= MIN_CLOCK_SAMPLES) {
+          if (this.syncStartedAt === null) this.syncStartedAt = receivedAt;
+          this.offset.update(est.theta, receivedAt - this.syncStartedAt < SETTLE_MS);
           this.timing?.setTheta(this.offset.value);
         }
         break;
